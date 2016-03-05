@@ -1657,5 +1657,44 @@ namespace Jint.Tests.Runtime
                 Assert.Equal(3, ex.LineNumber);
             }
         }
+
+        [Fact]
+        public void AddDebugInfoToThrownExceptions()
+        {
+            try
+            {
+                new Engine(opt => opt.DebugMode(true))
+                    .Execute(@"
+                    var foo = 'bar';
+                    var bar = 'baz';
+                    throw new Error('Nooooo!');
+                ");
+            }
+            catch (JavaScriptException ex)
+            {
+                Assert.NotNull(ex.DebugInfo);
+            }
+        }
+
+        [Fact]
+        public void AddDebugInfoToUncaughtExceptions()
+        {
+            try
+            {
+                new Engine(opt => opt.DebugMode(true))
+                    .Execute(@"
+                    var foo = 'foo';
+                    function test(s) {
+                        var bar = 'bar';
+                        o.boom();
+                    }
+                    test('arg');
+                ");
+            }
+            catch (JavaScriptException ex)
+            {
+                Assert.NotNull(ex.DebugInfo);
+            }
+        }
     }
 }
