@@ -33,20 +33,41 @@ namespace Jint.Runtime.Interop
             var parameters = new object[delegateArgumentsCount];
 
             // convert non params parameter to expected types
-            for (var i = 0; i < jsArgumentsWithoutParamsCount; i++)
             {
-                var parameterType = parameterInfos[i].ParameterType;
+                var i = 0;
+                Type parameterType = null;
+                try
+                {
+                    for (i = 0; i < jsArgumentsWithoutParamsCount; i++)
+                    {
+                        parameterType = parameterInfos[i].ParameterType;
 
-                if (parameterType == typeof (JsValue))
-                {
-                    parameters[i] = jsArguments[i];
+                        if (parameterType == typeof(JsValue))
+                        {
+                            parameters[i] = jsArguments[i];
+                        }
+                        else
+                        {
+                            parameters[i] = Engine.ClrTypeConverter.Convert(
+                                jsArguments[i].ToObject(),
+                                parameterType,
+                                CultureInfo.InvariantCulture);
+                        }
+                    }
                 }
-                else
+                catch (InvalidCastException)
                 {
-                    parameters[i] = Engine.ClrTypeConverter.Convert(
-                        jsArguments[i].ToObject(),
-                        parameterType,
-                        CultureInfo.InvariantCulture);
+                    JavaScriptException ex;
+                    try
+                    {
+                        ex = new JavaScriptException(Engine.TypeError, string.Format("Cannot convert argument '{0}' to type '{1}'", parameterInfos[i].Name, parameterType.Name));
+                    }
+                    catch
+                    {
+                        ex = new JavaScriptException(Engine.TypeError);
+                    }
+
+                    throw ex;
                 }
             }
 
@@ -63,7 +84,7 @@ namespace Jint.Runtime.Interop
                 }
             }
 
-            // assign params to array and converts each objet to expected type
+            // assign params to array and converts each object to expected type
             if(delegateContainsParamsArgument)
             {
                 int paramsArgumentIndex = delegateArgumentsCount - 1;
@@ -72,22 +93,43 @@ namespace Jint.Runtime.Interop
                 object[] paramsParameter = new object[paramsCount];
                 var paramsParameterType = parameterInfos[paramsArgumentIndex].ParameterType.GetElementType();
 
-                for (var i = paramsArgumentIndex; i < jsArgumentsCount; i++)
                 {
-                    var paramsIndex = i - paramsArgumentIndex;
+                    var i = 0;
+                    try
+                    {
+                        for (i = paramsArgumentIndex; i < jsArgumentsCount; i++)
+                        {
+                            var paramsIndex = i - paramsArgumentIndex;
 
-                    if (paramsParameterType == typeof(JsValue))
-                    {
-                        paramsParameter[paramsIndex] = jsArguments[i];
+                            if (paramsParameterType == typeof(JsValue))
+                            {
+                                paramsParameter[paramsIndex] = jsArguments[i];
+                            }
+                            else
+                            {
+                                paramsParameter[paramsIndex] = Engine.ClrTypeConverter.Convert(
+                                    jsArguments[i].ToObject(),
+                                    paramsParameterType,
+                                    CultureInfo.InvariantCulture);
+                            }
+                        }
                     }
-                    else
+                    catch (InvalidCastException)
                     {
-                        paramsParameter[paramsIndex] = Engine.ClrTypeConverter.Convert(
-                            jsArguments[i].ToObject(),
-                            paramsParameterType,
-                            CultureInfo.InvariantCulture);
-                    }                    
+                        JavaScriptException ex;
+                        try
+                        {
+                            ex = new JavaScriptException(Engine.TypeError, string.Format("Cannot convert argument '{0}' to type '{1}'", parameterInfos[i].Name, paramsParameterType.Name));
+                        }
+                        catch
+                        {
+                            ex = new JavaScriptException(Engine.TypeError);
+                        }
+
+                        throw ex;
+                    }
                 }
+
                 parameters[paramsArgumentIndex] = paramsParameter;
             }
 
